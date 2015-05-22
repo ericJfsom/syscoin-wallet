@@ -148,6 +148,11 @@
 							<proguard>
 								<skip>false</skip>
 							</proguard>
+                            <dex>
+                                <jvmArguments>
+                                    <jvmArgument>-Xmx2048M</jvmArgument>
+                                </jvmArguments>
+                            </dex>
 						</configuration>
 						<dependencies>
 							<dependency>
@@ -259,6 +264,11 @@
 					<sdk>
 						<platform>16</platform>
 					</sdk>
+                    <dex>
+                        <jvmArguments>
+                            <jvmArgument>-Xmx2048M</jvmArgument>
+                        </jvmArguments>
+                    </dex>
 					<sign>
 						<debug>both</debug>
 					</sign>
@@ -280,7 +290,7 @@
 					</additionalBuildcommands>
 					<classpathContainers>
 						<classpathContainer>com.android.ide.eclipse.adt.ANDROID_FRAMEWORK</classpathContainer>
-						<!-- This is a workaround: we do not want JRE_CONTAINER, however if we remove it, it will be automatically added, and 
+						<!-- This is a workaround: we do not want JRE_CONTAINER, however if we remove it, it will be automatically added, and
 							placed first. So we add it in the second position, so that the project is recognized as an Android project. -->
 						<classpathContainer>org.eclipse.jdt.launching.JRE_CONTAINER</classpathContainer>
 					</classpathContainers>

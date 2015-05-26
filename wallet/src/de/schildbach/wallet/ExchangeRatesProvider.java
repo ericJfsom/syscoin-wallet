@@ -17,29 +17,6 @@
 
 package de.schildbach.wallet;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Currency;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.zip.GZIPInputStream;
-
-import javax.annotation.Nullable;
-
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.utils.Fiat;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -49,11 +26,24 @@ import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.format.DateUtils;
-
 import com.google.common.base.Charsets;
-
 import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.Io;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.CoinDefinition;
+import org.bitcoinj.utils.Fiat;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 /**
  * @author Andreas Schildbach
@@ -100,11 +90,11 @@ public class ExchangeRatesProvider extends ContentProvider
 
 	private static final URL BITCOINAVERAGE_URL;
 	private static final String[] BITCOINAVERAGE_FIELDS = new String[] { "24h_avg", "last" };
-	private static final String BITCOINAVERAGE_SOURCE = "BitcoinAverage.com";
+	private static final String BITCOINAVERAGE_SOURCE = "BitcoinAverage.com/Cryptsy.com";
 	private static final URL BLOCKCHAININFO_URL;
 	private static final String[] BLOCKCHAININFO_FIELDS = new String[] { "15m" };
-	private static final String BLOCKCHAININFO_SOURCE = "blockchain.info";
-
+	private static final String BLOCKCHAININFO_SOURCE = "blockchain.info/Cryptsy.com";
+	private static final URL CRYPTSY_URL;
 	// https://bitmarket.eu/api/ticker
 
 	static
@@ -113,6 +103,7 @@ public class ExchangeRatesProvider extends ContentProvider
 		{
 			BITCOINAVERAGE_URL = new URL("https://api.bitcoinaverage.com/custom/abw");
 			BLOCKCHAININFO_URL = new URL("https://blockchain.info/ticker");
+			CRYPTSY_URL = new URL("http://pubapi.cryptsy.com/api.php?method=singlemarketdata&marketid="+ CoinDefinition.cryptsyMarketId);
 		}
 		catch (final MalformedURLException x)
 		{
@@ -280,7 +271,49 @@ public class ExchangeRatesProvider extends ContentProvider
 	{
 		throw new UnsupportedOperationException();
 	}
+	private static Object getCoinValueBTC()
+	{
 
+		Double btcRate = 0.0;
+
+
+		try {
+			final HttpURLConnection connectionCryptsy = (HttpURLConnection)CRYPTSY_URL.openConnection();
+			connectionCryptsy.setConnectTimeout(Constants.HTTP_TIMEOUT_MS * 2);
+			connectionCryptsy.setReadTimeout(Constants.HTTP_TIMEOUT_MS * 2);
+			connectionCryptsy.connect();
+
+			final StringBuilder contentCryptsy = new StringBuilder();
+
+			Reader reader = null;
+			try
+			{
+				reader = new InputStreamReader(new BufferedInputStream(connectionCryptsy.getInputStream(), 1024));
+				Io.copy(reader, contentCryptsy);
+				final JSONObject head = new JSONObject(contentCryptsy.toString());
+				JSONObject returnObject = head.getJSONObject("return");
+				JSONObject markets = returnObject.getJSONObject("markets");
+				JSONObject coinInfo = markets.getJSONObject(CoinDefinition.coinTicker);
+				btcRate = coinInfo.getDouble("lasttradeprice");
+			}
+			finally
+			{
+				if (reader != null)
+					reader.close();
+			}
+			return btcRate;
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+		catch (final JSONException x)
+		{
+			x.printStackTrace();
+		}
+
+		return null;
+	}
 	private static Map<String, ExchangeRate> requestExchangeRates(final URL url, final String userAgent, final String source, final String... fields)
 	{
 		final long start = System.currentTimeMillis();
@@ -290,6 +323,14 @@ public class ExchangeRatesProvider extends ContentProvider
 
 		try
 		{
+			Double btcRate = 0.0;
+			Object result = getCoinValueBTC();
+			if(result == null)
+			{
+				log.warn("problem fetching coin value from cryptsy");
+				return null;
+			}
+			btcRate = (Double)result;
 			connection = (HttpURLConnection) url.openConnection();
 
 			connection.setInstanceFollowRedirects(false);
@@ -324,16 +365,25 @@ public class ExchangeRatesProvider extends ContentProvider
 
 						for (final String field : fields)
 						{
-							final String rateStr = o.optString(field, null);
+							String rateStr = o.optString(field, null);
 
 							if (rateStr != null)
 							{
 								try
 								{
+									double rateForBTC = Double.parseDouble(rateStr);
+
+									rateStr = String.format("%.8f", rateForBTC * btcRate).replace(",", ".");
 									final Fiat rate = Fiat.parseFiat(currencyCode, rateStr);
 
 									if (rate.signum() > 0)
 									{
+										if(currencyCode.equals(Constants.DEFAULT_EXCHANGE_CURRENCY)) {
+											rateStr = String.format("%.8f", btcRate).replace(",", ".");
+											final Fiat rateBTC = Fiat.parseFiat("BTC", rateStr);
+											rates.put("BTC", new ExchangeRate(new org.bitcoinj.utils.ExchangeRate(rateBTC), source));
+
+										}
 										rates.put(currencyCode, new ExchangeRate(new org.bitcoinj.utils.ExchangeRate(rate), source));
 										break;
 									}
@@ -349,7 +399,6 @@ public class ExchangeRatesProvider extends ContentProvider
 
 				log.info("fetched exchange rates from {} ({}), {} chars, took {} ms", url, contentEncoding, length, System.currentTimeMillis()
 						- start);
-
 				return rates;
 			}
 			else

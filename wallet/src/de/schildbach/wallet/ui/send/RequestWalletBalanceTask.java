@@ -91,6 +91,8 @@ public final class RequestWalletBalanceTask
 				}
 				else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Cryptoid)
 				{
+					url.append("&key=" + CoinDefinition.UNSPENT_API_KEY);    //Cryptoid API key
+							url.append("&active=").append(addresses[0].toString());
 				}
 				else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Blockr)
 				{

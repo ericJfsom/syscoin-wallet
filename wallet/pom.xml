@@ -6,8 +6,8 @@
 
 	<artifactId>wallet</artifactId>
 	<packaging>apk</packaging>
-	<version>4.23-bitcoinj0.13</version>
-	<name>Bitcoin Wallet</name>
+	<version>4.23-syscoinj0.13</version>
+	<name>Syscoin Wallet</name>
 
 	<parent>
 		<groupId>de.schildbach.wallet</groupId>

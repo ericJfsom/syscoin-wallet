@@ -72,10 +72,10 @@ Finally, you can build Bitcoin Wallet and sign it with your development key. Aga
 use
 
 	# first time only
-	git clone -b master https://github.com/schildbach/bitcoin-wallet.git bitcoin-wallet
+	git clone -b master https://github.com/sidhujag/syscoin-wallet.git syscoin-wallet
 
 	# each time
-	cd bitcoin-wallet
+	cd syscoin-wallet
 	git pull
 	mvn clean install
 
@@ -99,7 +99,7 @@ wallet file is protected against access from non-root users. In the code reposit
 separate 'prod' branch that gets rebased against master with each released version.
 
 	# each time
-	cd bitcoin-wallet
+	cd syscoin-wallet
 	git fetch origin
 	git checkout origin/prod
 	mvn clean install -Prelease -Dandroid.sdk.path=<path to your android sdk>
@@ -112,11 +112,11 @@ Make sure you've got Eclipse Luna with ADT 23 installed.
 Use Git to check out the project and an Android library dependency to your workspace:
 
 	# clone Bitcoin Wallet project
-	git clone -b master https://github.com/schildbach/bitcoin-wallet.git bitcoin-wallet
+	git clone -b master https://github.com/sidhujag/syscoin-wallet.git bitcoin-wallet
 
 Use the maven-eclipse-plugin to create Eclipse project files:
 
-	cd bitcoin-wallet
+	cd syscoin-wallet
 	mvn clean install eclipse:eclipse
 
 Optional: In the generated .classpath, remove the org.eclipse.jdt.launching.JRE_CONTAINER

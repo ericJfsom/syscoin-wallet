@@ -110,9 +110,9 @@ public abstract class InputParser
 				}
 				catch (final BitcoinURIParseException x)
 				{
-					log.info("got invalid bitcoin uri: '" + input + "'", x);
+					log.info("got invalid syscoin uri: '" + input + "'", x);
 
-					error(R.string.input_parser_invalid_bitcoin_uri, input);
+					error(R.string.input_parser_invalid_syscoin_uri, input);
 				}
 			}
 			else if (PATTERN_BITCOIN_ADDRESS.matcher(input).matches())

@@ -17,6 +17,23 @@
 
 package de.schildbach.wallet.ui.send;
 
+import android.os.Handler;
+import android.os.Looper;
+import com.google.common.base.Charsets;
+import com.google.common.io.BaseEncoding;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.util.Io;
+import org.bitcoinj.core.*;
+import org.bitcoinj.core.TransactionConfidence.ConfidenceType;
+import org.bitcoinj.script.ScriptBuilder;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -26,31 +43,6 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.annotation.Nullable;
-
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionConfidence.ConfidenceType;
-import org.bitcoinj.core.TransactionOutput;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import android.os.Handler;
-import android.os.Looper;
-
-import com.google.common.base.Charsets;
-import com.google.common.io.BaseEncoding;
-
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.util.Io;
-import de.schildbach.wallet.R;
 
 /**
  * @author Andreas Schildbach
@@ -90,10 +82,27 @@ public final class RequestWalletBalanceTask
 			public void run()
 			{
 				final StringBuilder url = new StringBuilder(Constants.BITEASY_API_URL);
-				url.append("unspent-outputs");
-				url.append("?per_page=MAX");
-				for (final Address address : addresses)
-					url.append("&address[]=").append(address.toString());
+				if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.BitEasy)
+				{
+					url.append("unspent-outputs");
+					url.append("?per_page=MAX");
+					for (final Address address : addresses)
+						url.append("&address[]=").append(address.toString());
+				}
+				else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Cryptoid)
+				{
+				}
+				else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Blockr)
+				{
+					int i = 0;
+					for (final Address address : addresses)
+					{
+						if(i != 0)
+							url.append(",");
+						url.append(address.toString());
+						i++;
+					}
+				}
 
 				log.debug("trying to request wallet balance from {}", url);
 
@@ -124,19 +133,36 @@ public final class RequestWalletBalanceTask
 						Io.copy(reader, content);
 
 						final JSONObject json = new JSONObject(content.toString());
+						JSONArray jsonOutputs = null;
+						if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.BitEasy)
+						{
+							final int status = json.getInt("status");
+							if (status != 200)
+								throw new IOException("api status " + status + " when fetching unspent outputs");
 
-						final int status = json.getInt("status");
-						if (status != 200)
-							throw new IOException("api status " + status + " when fetching unspent outputs");
+							final JSONObject jsonData = json.getJSONObject("data");
 
-						final JSONObject jsonData = json.getJSONObject("data");
+							final JSONObject jsonPagination = jsonData.getJSONObject("pagination");
 
-						final JSONObject jsonPagination = jsonData.getJSONObject("pagination");
+							if (!"false".equals(jsonPagination.getString("next_page")))
+								throw new IllegalStateException("result set too big");
 
-						if (!"false".equals(jsonPagination.getString("next_page")))
-							throw new IllegalStateException("result set too big");
+							jsonOutputs = jsonData.getJSONArray("outputs");
+						}
+						else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Blockr)
+						{
+							String success = json.getString("status");
 
-						final JSONArray jsonOutputs = jsonData.getJSONArray("outputs");
+							if (!success.equals(success))
+								throw new IOException("api status " + "not successful" + " when fetching unspent outputs");
+
+							JSONObject dataJson = json.getJSONObject("data");
+							jsonOutputs = dataJson.getJSONArray("unspent");
+						}
+						else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Cryptoid)
+						{
+							jsonOutputs = json.getJSONArray("unspent_outputs");
+						}
 
 						final Map<Sha256Hash, Transaction> transactions = new HashMap<Sha256Hash, Transaction>(jsonOutputs.length());
 
@@ -144,13 +170,35 @@ public final class RequestWalletBalanceTask
 						{
 							final JSONObject jsonOutput = jsonOutputs.getJSONObject(i);
 
-							if (jsonOutput.getInt("is_spent") != 0)
-								throw new IllegalStateException("UXTO not spent");
 
-							final Sha256Hash uxtoHash = new Sha256Hash(jsonOutput.getString("transaction_hash"));
-							final int uxtoIndex = jsonOutput.getInt("transaction_index");
-							final byte[] uxtoScriptBytes = HEX.decode(jsonOutput.getString("script_pub_key"));
-							final Coin uxtoValue = Coin.valueOf(Long.parseLong(jsonOutput.getString("value")));
+							Sha256Hash uxtoHash = null;
+							int uxtoIndex = 0;
+							byte[] uxtoScriptBytes = null;
+							Coin uxtoValue = null;
+
+							if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.BitEasy)
+							{
+								if (jsonOutput.getInt("is_spent") != 0)
+									throw new IllegalStateException("UXTO not spent");
+								uxtoHash = new Sha256Hash(jsonOutput.getString("transaction_hash"));
+								uxtoIndex = jsonOutput.getInt("transaction_index");
+								uxtoScriptBytes = HEX.decode(jsonOutput.getString("script_pub_key"));
+								uxtoValue = Coin.valueOf(jsonOutput.getLong("value"));
+							}
+							else if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Blockr)
+							{
+								uxtoHash = new Sha256Hash(jsonOutput.getString("tx"));
+								uxtoIndex = jsonOutput.getInt("n");
+								uxtoScriptBytes = HEX.decode(jsonOutput.getString("script"));
+								uxtoValue = Coin.valueOf((long)(Double.parseDouble(String.format("%.08f", jsonOutput.getDouble("amount")).replace(",", ".")) *100000000));
+							}
+							if(CoinDefinition.UnspentAPI == CoinDefinition.UnspentAPIType.Cryptoid)
+							{
+								uxtoHash = new Sha256Hash(jsonOutput.getString("tx_hash"));
+								uxtoIndex = jsonOutput.getInt("tx_ouput_n");
+								uxtoScriptBytes = ScriptBuilder.createOutputScript(addresses[0]).getProgram();
+								uxtoValue = Coin.valueOf(jsonOutput.getLong("value"));
+							}
 
 							Transaction tx = transactions.get(uxtoHash);
 							if (tx == null)

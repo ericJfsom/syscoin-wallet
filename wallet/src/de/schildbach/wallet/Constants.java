@@ -23,7 +23,7 @@ import android.text.format.DateUtils;
 import org.bitcoinj.core.CoinDefinition;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.params.MainNetParams;
-import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.params.TestNet2Params;
 import org.bitcoinj.utils.MonetaryFormat;
 
 import java.io.File;
@@ -36,7 +36,7 @@ public final class Constants
 	public static final boolean TEST = R.class.getPackage().getName().contains("_test");
 
 	/** Network this wallet is on (e.g. testnet or mainnet). */
-	public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet3Params.get() : MainNetParams.get();
+	public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet2Params.get() : MainNetParams.get();
 
 	public final static class Files
 	{

@@ -438,10 +438,10 @@ public abstract class InputParser
 
 	private static final Pattern PATTERN_BITCOIN_ADDRESS = Pattern.compile("[" + new String(Base58.ALPHABET) + "]{20,40}");
 	private static final Pattern PATTERN_DUMPED_PRIVATE_KEY_UNCOMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
-			NetworkParameters.ID_MAINNET) ? CoinDefinition.PATTERN_PRIVATE_KEY_START_UNCOMPRESSED : "9")
+			NetworkParameters.ID_MAINNET) ? CoinDefinition.PATTERN_PRIVATE_KEY_START : CoinDefinition.PATTERN_PRIVATE_KEY_START_TESTNET)
 			+ "[" + new String(Base58.ALPHABET) + "]{50}");
 	private static final Pattern PATTERN_DUMPED_PRIVATE_KEY_COMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
-			NetworkParameters.ID_MAINNET) ? CoinDefinition.PATTERN_PRIVATE_KEY_START_COMPRESSED : "c")
+			NetworkParameters.ID_MAINNET) ? CoinDefinition.PATTERN_PRIVATE_KEY_START_COMPRESSED : CoinDefinition.PATTERN_PRIVATE_KEY_START_COMPRESSED_TESTNET)
 			+ "[" + new String(Base58.ALPHABET) + "]{51}");
 	private static final Pattern PATTERN_BIP38_PRIVATE_KEY = Pattern.compile("6P" + "[" + new String(Base58.ALPHABET) + "]{56}");
 	private static final Pattern PATTERN_TRANSACTION = Pattern.compile("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$\\*\\+\\-\\.\\/\\:]{100,}");

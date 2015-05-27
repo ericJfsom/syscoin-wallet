@@ -17,47 +17,31 @@
 
 package de.schildbach.wallet.ui;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
-import org.bitcoinj.core.AbstractWalletEventListener;
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.Wallet;
-import org.bitcoinj.core.WalletEventListener;
-import org.bitcoinj.uri.BitcoinURI;
-import org.bitcoinj.utils.Threading;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.ContentResolver;
+import android.content.*;
 import android.content.Context;
-import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.view.ActionMode;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
+import android.view.*;
 import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.util.BitmapFragment;
-import de.schildbach.wallet.util.Qr;
-import de.schildbach.wallet.util.Toast;
-import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet.util.WholeStringBuilder;
 import de.schildbach.wallet.R;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.*;
+import org.bitcoinj.core.*;
+import org.bitcoinj.uri.BitcoinURI;
+import org.bitcoinj.utils.Threading;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * @author Andreas Schildbach
@@ -187,7 +171,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 						return true;
 
 					case R.id.wallet_addresses_context_browse:
-						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.EXPLORE_BASE_URL + "address/"
+						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.EXPLORE_BASE_URL + Constants.EXPLORE_ADDRESS_PATH
 								+ getAddress(position).toString())));
 
 						mode.finish();
